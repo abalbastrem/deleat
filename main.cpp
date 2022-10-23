@@ -2,6 +2,8 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <map>
+#include <algorithm>
 using namespace std;
 
 string databaseName = "database.txt";
@@ -11,14 +13,19 @@ string ingredients;
 int persistIngredients(string);
 void promptHealthCheck();
 int healthCheck;
+const int healthCheckValues[5] = {1,2,3,4,5};
 int inputHealthCheck();
 int persistHealthCheck(int);
-int review();
+map<int, vector<string>> tallyIngredients();
+vector<string> unhealthyIngredients;
+vector<string> findUnhealthyIngredients(const map<int, vector<string>> &);
+void reviewMsg(const vector<string> &);
 void resetUserInput();
-string IngrDelim = ",";
-string healthCheckDelim = ":";
+char IngrDelim = ',';
+string healthCheckDelim = ":"; // TODO into char
 
 // TODO
+// variable scope
 // refactor in m,v,c,l
 // roughly prevent user input error
 
@@ -36,7 +43,9 @@ int main()
         resetUserInput();
     }
 
-    review();
+    map<int, vector<string>> tally = tallyIngredients();
+    unhealthyIngredients = findUnhealthyIngredients(tally);
+    reviewMsg(unhealthyIngredients);
     
     return 0;
 }
@@ -90,32 +99,66 @@ int persistHealthCheck(int healthCheck)
     return 0;
 }
 
-int review()
+map<int, vector<string>> tallyIngredients()
 {
     string line;
     ifstream iDatabase(databaseName);
+    map<int, vector<string>> tally;
 
-    // TODO put vectors in a map
-    vector<string> one;
-    vector<string> two;
-    vector<string> three;
-    vector<string> four;
-    vector<string> five;
+    vector<string> ingredientsV;
+
+    // initialise tallies
+    for (int i : healthCheckValues)
+    {
+        tally[i] = ingredientsV;
+    }
 
     while (getline(iDatabase, line))
     {
-        char healthCheck = line.back();
-        if (healthCheck == '1')
+        ingredientsV.clear();
+        char healthCheck = line.back() - 48;
+
+        string ingredients = line.substr(0, line.find(healthCheckDelim));
+        string ingredient = "";
+        for (size_t i = 0; i < ingredients.length(); i++)
         {
-            string ingredients = line.substr(0, line.find(healthCheckDelim));
-            // TODO put ingredients in vectors
+            if (ingredients.at(i) == IngrDelim) {
+                tally[healthCheck].push_back(ingredient);
+                ingredient.clear();
+            } else {
+                ingredient.push_back(ingredients.at(i));
+            }
+        }
+        tally[healthCheck].push_back(ingredient);
+        ingredient.clear();
+    }
+
+    return tally;
+}
+
+vector<string> findUnhealthyIngredients(const map<int, vector<string>> &tally) // TODO check const
+{
+    vector<string> unhealthyIngredients;
+
+    for (string suspiciousIngredient: tally.at(1)) {
+        if (find(tally.at(5).begin(), tally.at(5).end(), suspiciousIngredient) == tally.at(5).end()) {
+            unhealthyIngredients.push_back(suspiciousIngredient);
         }
     }
 
-    return 0;
+    return unhealthyIngredients;
+}
+
+void reviewMsg(const vector<string> &unhealthyIngredients)
+{
+    cout << "your unhealthy ingredients are: " << endl;
+    for (string unhealthyIngredient: unhealthyIngredients) {
+        cout << unhealthyIngredient << ", ";
+    }
+    cout << endl;
 }
 
 void resetUserInput()
 {
-    cin.ignore();
+    cin.ignore(); // TODO es por el getline?
 }
